@@ -1,0 +1,389 @@
+---
+title: Processing texts and create a network of co-occurrence between dictionaries
+  of words in the texts sentences
+output:
+  html_notebook: default
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+Required libraries.
+
+```{r}
+library(tokenizers)
+library(tm)
+library(stringr)
+library(readr)
+library(igraph)
+```
+
+1) First of all the texts have to be imported in Rstudio, for doing so we set the working directory and use the function read_lines from readR library as follows. To use the notebook, enter the working directory and the file name of the text (with the extension) as requested. The code will previously ask how many texts you want to import and then it will ask to input the names one by one. If using a Windows systems, the '\' dividing the directory and the files' paths have to be changed in '/'. 
+We then used the paste (name_of_text, collapse= '') function to delete the division by line performed by the previous operation and make all the vectors containing our articles contain just one string variable each. At this stage some initial pre-processing are performed:
+-Punctuation is moved so that is not consider as part of the words
+-Words are stemmed
+
+```{r}
+
+# Set working directory (files should be in the same directory)
+directory<-readline(prompt = "Enter directory where the text file is located: ")
+setwd(directory)
+
+# Enter number of texts to be imported and analysed
+number_texts<-as.integer(readline(prompt = "Enter number of texts: "))
+
+# Importing text/s (.txt) into RStudio and create a single character vector out of it
+text_list<-list()
+for (i in 1:number_texts) {
+text_list[[i]]<-read_lines(readline(prompt = "Enter file name: "))
+text_list[[i]]<-`names<-`(text_list[[i]],paste("text",i,"_c",sep = ""))
+}
+preproc_text_list<-list()
+for (i in 1:number_texts) {
+preproc_text_list[[i]]<-paste(text_list[[i]], collapse = ' ')
+preproc_text_list[[i]]<-gsub("((?:\b| )?([.,:;!?]+)(?: |\b)?)", " \\1 ", preproc_text_list[[i]], perl=T)#Add space between words and punctuation
+preproc_text_list[[i]]<-stemDocument(preproc_text_list[[i]])#Stemm the texts
+preproc_text_list[[i]]<-paste(preproc_text_list[[i]], collapse = " ")
+preproc_text_list[[i]]<-`names<-`(preproc_text_list[[i]],paste("text",i,"_c",sep = ""))
+}
+```
+
+2) At this stage, we create as many dictionaries as the concepts to investigate in the texts. In this notebook, we defined the words to be analysed as dictionaries because the codes below allow for the possibility to analyse concepts instead of single words. In this case, a concept is defined as a set of words pointing to a same semantic goal (e.g. denoting a broader category like, for example, "names of cities"). The present notebook can be used also to analyse co-occurrence of single words. To do so, simply include just one word in every dictionary in the way explained below. For multiple-words dictionaries, remember not to include the same word in more than one dictionary. Make sure to include the terms twice: one in lowercase and one with first letter capitalised, representing the case in which the word appears at the beginning of the sentence. This process is a little bit annoying, pheraps, but unfurtunately it is impossible to just put all the words of the texts in lowercase at this stage as the sentence-level tokenisation will rely also on words capitalisation. At this point it is important also to point out the fact that the wordsin the texts and in the dictionary are stemmed and not lemmatised: this means that certain irregular forms or form of the same word that are morphologically different have to be included in the dictionaries (e.g. the pronouns, like "he","him","his",etc.).The first word of the dictionary, finally, is the one with which we want to identify the concept of the dictionary itself, because later such a word will be used as the default value to which the related terms in the text will be changed and as a label for the nodes. Below we create a list containing the dictionaries. 
+
+```{r}
+# Dictionaries: all the dictionaries are included in a list that will be compiled by the user by defining the numbers of dictionaries and adding words to the single dictionary. The words included in the various dictionaries HAVE TO BE SEPARATED BY A COMMA (,) and HAVE TO BE INCLUDED BOTH WITH FIRST LETTER CAPITALISED AND WITHOUT: e.g. Word1, word2, word1, Word2, etc. If instead of dictionaries you want to analyse co-occurrences of single words, for every word of interest type the word twice, once with first letter capitalised and once without, remembering to separate them with a comma.
+
+number_dictionaries<-as.integer(readline(prompt = "Enter numbers of dictionaries: "))
+dict_list<-list()
+for (i in 1:number_dictionaries) {
+ dict_list[[i]]<-vector()
+ dict_list[[i]]<-readline(prompt = paste("Enter words to be included in dictionary", i,": "))
+ dict_list[[i]]<-strsplit(dict_list[[i]], ",")
+ dict_list[[i]]<-unlist(dict_list[[i]])
+ dict_list[[i]]<-str_trim(dict_list[[i]])
+}
+
+# Add the stemmed words to the dictionaries
+for (i in 1:number_dictionaries) {
+  dict_list[[i]]<-append(dict_list[[i]],stemDocument(dict_list[[i]],language = "english"))# Select the language that apply
+}
+```
+
+3) At this point we create two functions in order to perform all of the text processing necessary for the analysis. These functions will convert all of the words of interest in the text (as identified by the different dictionaries) to single terms, i.e. the first word of the relative dictionaries, as explained above. In this way, the co-occurrences between concepts can be calculated as co-occurrences between single words, thus saving time while not compromising the final result. The first function converts the words of a single dictionary to the reference term (e.g. dict_example[1]), while the second one iterates over the first for all of the dictionaries in the dict_list previously created.If analysing co-occurrences between single words instead of concepts, points 3 and 4 can be skipped.
+
+```{r}
+# Function to replace all the words related to the concepts of interest and contained in the dictionaries (see above) with a predefined term (the first in the dictionaries)
+All_dict_words_to1term <- function(starting_doc,dict,sub_term){
+           for (i in 1:length(dict)) {
+              if (i==1){
+                new_doc<-str_replace_all(starting_doc,dict[i],sub_term)
+                       }
+              else{
+                new_doc<-str_replace_all(new_doc,dict[i],sub_term)
+                       }
+                 }
+           return(new_doc)
+}
+
+# Function to iterate the previous function over several dictionaries and create a list of the texts thus processed (the final element of the list is the one processed after all of the dictionaries)
+All_dict_words_to1term_fin <-  function(starting_doc,dictionaries){
+        result<-list()
+        for (i in 1:length(dictionaries)) {
+           if (i==1) {
+         result[[i]]<-All_dict_words_to1term(starting_doc,dictionaries[[i]],dictionaries[[i]][1])
+                     }
+           else{
+        result[[i]]<-All_dict_words_to1term(result[[i-1]],dictionaries[[i]],dictionaries[[i]][1])
+               }
+              }
+        return(result)
+        }
+```
+
+4) The function to be used is the second one, as it incorporates the first. Such a function returns a list containing as many versions of the text as the number of dictionaries we passed through the function. The process, in fact, progresses by applying the changing (see above) step by step. So, the first dictionary will be used to process the original text, the second dictionary will be used to process the text processed through the first dictionary and so on. This approach gives us the possibility to include new dictionaries (i.e. concepts) progressively and to test the differences without losing the previous results. In the below codes, the progressive list is overwritten with the text processed through the last dictionary in order to save memory. By omitting the last line, however, the code will store separately the results of the processing for every dictionary.
+
+```{r}
+# Processing the text(s) and assigning the last element of the list (see above) to a vector
+processed_text_list<-list()
+for (i in 1:number_texts) {
+  processed_text_list[[i]]<-All_dict_words_to1term_fin(preproc_text_list[[i]], dict_list)
+  processed_text_list[[i]]<-processed_text_list[[i]][[number_dictionaries]] #omit if storing separately the text as processed by every dictionary.
+  processed_text_list[[i]]<-`names<-`(processed_text_list[[i]],paste("processed_","text",i,sep = ""))
+}
+```
+
+5) The processed texts can then be tokenised to divide them in as much documents as the number of sentences in them. Such a process is necessary to later perform the analysis of co-occurrences in the articles' sentences. In order to do so, a function cleaning the text and transforming all the words to lowercase has been created and the various texts have been passed through it.
+
+```{r}
+clean_token<-function(x){
+  library(tokenizers)
+  x<-iconv(x, "latin1",'UTF-8', sub = "") #change the parameters of conversion as needed, esepcially if errors are thrown at this stage
+  x<-tokenize_sentences(x)
+  return(x)
+}
+
+# Tokenising processed text(s)
+Text_sentences_list<-list()
+for (i in 1:length(processed_text_list)) {
+Text_sentences_list[[i]]<-clean_token(processed_text_list[[i]])
+Text_sentences_list[[i]]<-`names<-`(Text_sentences_list[[i]],paste("text",i,"_sentences",sep = ""))
+}
+```
+
+6) The lists containing the sentences can then be passed through the library tm in order to create objects of class corpus. Such objects are necessary to arrange the texts in matrices over which to perform the analysis. Moreover, the library tm presents a series of prebuilt codes that further process the texts, removing numbers, stopwords, etc.
+
+```{r}
+# Create corpora from the texts and further process them
+Corpus_list<-list()
+for (i in 1:number_texts) {
+  Corpus_list[[i]]<-VCorpus(VectorSource(unlist(Text_sentences_list[[i]])))
+Corpus_list[[i]] <- tm_map(Corpus_list[[i]], content_transformer(tolower))
+Corpus_list[[i]] <- tm_map(Corpus_list[[i]], removePunctuation)
+Corpus_list[[i]] <- tm_map(Corpus_list[[i]], removeNumbers)
+Corpus_list[[i]] <- tm_map(Corpus_list[[i]], removeWords, stopwords("english"))#select the language of the texts
+Corpus_list[[i]] <- tm_map(Corpus_list[[i]], stripWhitespace)
+Corpus_list[[i]]<-`names<-`(Corpus_list[[i]],paste("Corpus",i,sep = ""))
+}
+```
+
+7) The Term-Document matrices can thus be created for each corpora.
+
+```{r}
+# Create tdm from corpora
+TDMlist<-list()
+for (i in 1:number_texts) {
+  TDMlist[[i]]<-TermDocumentMatrix(Corpus_list[[i]])
+}
+```
+
+8) At this point, we create a single dictionary vector containing the first word of the dictionaries in the dict_list: this process is done because the first word of all the dictionaries has now substituted all the other words of the single dictionaries across the texts and now it is possible to associate concepts as if they were single terms.
+
+```{r}
+dict_new<-vector()
+for (i in 1:number_dictionaries) {
+dict_new[i] <- dict_list[[i]][1]
+}
+dict_new<-tolower(dict_new)
+```
+
+9) We define the associations (i.e. co-occurrences) between the concepts of interest by applying a new function to every tdm. The second parameter of the function is the new dictionary created in the previous step. The output will be a list in which all the list's vectors contain named integers representing the correlation between the first dictionary (represented by a single word, see above) and the others, the second and the others and so on. The output of the function for each of the corpora is assigned to newly created lists.
+
+```{r}
+# Function to find the associations (i.e. co-occurrences) in the texts of the concepts of interest and to individuate among them the other concepts of interest. The output are vectors containing the associations thus individuated, whereas the name of the vector itself is the concept passed through the findAssocs () function
+Weighted_corr<-function(tdm,dict){
+  result<-list()
+  result1<-list()
+  result2<-list()
+  for (i in 1:length(dict)) {
+    result[[i]]<-findAssocs(tdm,dict[i],corlimit=0.001)
+  for (i in 1:length(result)){
+    result1[[i]]<-unlist(result[[i]])
+    result1[[i]]<-result1[[i]][paste(dict[i],'.',dict,sep = "")]
+    result1[[i]]<-`names<-`(result1[[i]],dict)
+  }
+    }
+return(result1)
+}
+# Creating the texts' associations (here called correlations, thus corr) list
+corr_list<-list()
+for (i in 1:number_texts) {
+  corr_list[[i]]<-Weighted_corr(TDMlist[[i]],dict_new)
+  corr_list[i]<-`names<-`(corr_list[i],paste("corr",i,sep = ""))
+}
+```
+
+10) The resulting associations in the correlations lists we generated are now a series of matrices that repeat the results in a specular way as the correlation from word1 to word2 and from word2 to word1 is the same when using the prebuilt tm function FindAssocs (). Therefore, it could be useful to save just half of all the results and to delete the NA values (a specific function for this is also included) occurring when there is no correlation between terms and when the term is being correlated with itself. We can do this by applying the following function to the correlations lists:
+
+```{r}
+# Function to delete the duplicated values in the correlation lists
+Delete_dupl_in_corrlist<-function(corr_list,dict){
+  corr_list1<-list()
+  for (i in 1:(length(dict)-1)) {
+    corr_list1[[i]]<-corr_list[[i]][dict[i+1:length(dict)]]
+  }
+  for (i in 1:(length(dict)-1)) {
+    corr_list1[[i]]<-corr_list1[[i]][1:(length(dict)-i)]
+    }
+  return(corr_list1)
+}
+
+# Function to delete the NA values in the correlation lists
+delete_na<-function(lists){
+  for (i in 1:length(lists)) {
+    lists[[i]]<-na.omit(lists[[i]])
+  }
+  return(lists)
+}
+# Removing duplicates and NA values in corr_list
+for (i in 1:number_texts) {
+corr_list[[i]]<-Delete_dupl_in_corrlist(corr_list[[i]],dict_new)
+corr_list[[i]]<-delete_na(corr_list[[i]])
+}
+```
+
+11) The values contained in the lists are transformed into integer numbers to make them more intuitive to compare in a visual way.In case the original association value is meant to be preserved, skip this passage.
+
+```{r}
+# Function to transform the correlation values (ranging from 0 to 1) in an integer, 1 digit number
+integer_corr<-function(start_vector){
+  for (i in 1:length(start_vector)) {
+    start_vector[i]<-round(start_vector[i]*100,digits =0)
+  }
+  return(start_vector)
+}
+# Transforming corr_list values in integer, 1 digit numbers
+for (i in 1:number_texts) {
+  for (j in 1:(number_dictionaries-1)) {
+  corr_list[[i]][[j]]<-integer_corr(corr_list[[i]][[j]])
+  }
+}
+```
+
+12) Finally, we create a node_reference vector that assigns to all the words in the dict_new a numeric ID, that will be needed by Gephi to identify the various nodes (our concepts/words). The node_reference vector is used as the second parameter of a function we built, which translates our correlations lists in a data frame format, therefore ready to be exported in a .csv file. Gephi will recognise these files as edges' tables, i.e. the files containing the links between the nodes. The naming of the columns of the edges' tables is very important and does not need to be changed, otherwise Gephi will not recognise the files as edges' tables. The following codes represent the whole process, from building the node_reference to create the various data frames and export them to .csv files (that will be saved in the current working directory).
+
+```{r}
+# Creating numeric IDs for the concepts of interest (the nodes of the network that will be built)
+node_reference<- data.frame(dict_new, c(1:length(dict_new)))
+node_reference<-node_reference[,2]
+node_reference<-`names<-`(node_reference,dict_new)
+
+# Function to create the edges' tables from the lists containing the associations between the concepts of interest 
+create_edge_table<-function(weight_list,node_vector){
+  finalist<-list()
+for (i in 1:length(weight_list)) {
+  finalist[[i]]<-data.frame(rep(names(node_vector[i]),times=length(weight_list[[i]])),rep(node_vector[names(node_vector[i])],times=length(weight_list[[i]])),node_vector[names(weight_list[[i]])],weight_list[[i]])
+}
+for (i in 1:length(finalist)) {
+ finalist[[i]]<-`names<-`(finalist[[i]],c('Label','Source','Target','Weight'))
+}
+for (i in 1:(length(finalist))) {
+  if (i>1&i<3) {
+    df<-merge(finalist[[i]],finalist[[i-1]],all.x = TRUE,all.y = TRUE)
+  }
+  if (i>2) {
+    df<-merge(finalist[[i]],df,all.x = TRUE,all.y = TRUE)
+  }
+ }
+  return(df)
+}
+
+# Creating the edges' tables and exporting them in a .csv format
+edges_df_list<-list()
+for (i in 1:number_texts) {
+edges_df_list[[i]]<- create_edge_table(corr_list[[i]], node_reference)
+}
+for (i in 1:number_texts) {
+write.table(edges_df_list[[i]][,2:4], file = paste('edges_text',i,'.csv',sep = ''),row.names = FALSE)
+}
+```
+
+13) These edges' tables could be already imported in Gephi, as Gephi would accordingly create a nodes table by itself. However, we are also interested to add the single occurrences of the concepts as attributes to the nodes and, anyway, creating separate nodes' table at this point would give us a greater degree of consistency. To create the nodes' tables, we adopted a proceeding similar to the one we adopted until now. This time, however, we just want to see the occurrence (i.e. frequency) of the dictionaries' words inside the texts and, then, we will just need the simple, pre-built function of the library tm that can operate directly on the processed texts, without the need of them being splitted up in sentences and arranged in data frames. The following function incorporates the tm library's function 'TermFreq' and, at the same time, cleans our texts.  The function has been applied to the various texts as we had them before tokenisation.The result is a list of the frequencies of all the words in our texts. To individuate just the ones of interest we used the dict_new (see above) as follows.
+
+```{r}
+# Function to find frequencies of all words in the text, while cleaning it and putting it to lowercase 
+termFreq2<-function(x){
+  termFreq(x, 
+           control = list(content_transformer(tolower),
+                          removePunctuation,removeNumbers,
+                          removeWords, stopwords("en"),stripWhitespace))# Change the                                                           language of stopwords if needed
+}
+
+# Creating texts' frequencies (i.e. absolute occurrences) vector for the concepts of interest
+Text_freq<-list()
+for (i in 1:number_texts) {
+  processed_text_list[[i]]<-iconv(processed_text_list[[i]], "UTF-8",'latin1', sub = "") #change the parameters of conversion as needed, esepcially if errors are thrown at this stage
+  Text_freq[[i]]<-termFreq2(processed_text_list[[i]])
+  Text_freq[[i]]<-Text_freq[[i]][dict_new]
+}
+```
+
+14) From the vector just created it is possible to find also the relative occurrences of our keywords. This is simply done by dividing the values previously obtained by the length of the relative corpus (which can be obtained by simply adding up all the values of the all_freq vectors) and by multiplying it by 100, in order to express the value as a percentage.
+
+```{r}
+# Creating the texts' relative occurences (i.e. as a percentage of all the words in the text) vector for the concepts of interest
+Text_freq_rel<-list()
+for (i in 1:number_texts) {
+processed_text_list[[i]]<-iconv(processed_text_list[[i]], "UTF-8",'latin1', sub = "") #change the parameters of conversion as needed, esepcially if errors are thrown at this stage  
+Text_freq_rel[[i]]<- Text_freq[[i]]/sum(termFreq2(processed_text_list[[i]]))*100
+}
+```
+
+15) The nodes' tables can then be created one by one, including both the relative and the absolute occurrences of the concepts. The nodes' tables are transferred into .csv files on the computer in the same way as the edges tables before. The naming of the data frames' columns, again, has to follow a specific standard in order to be imported in Gephi.
+
+```{r}
+# Creating the texts' nodes' tables and exporting them to a .csv file
+Nodes_df_list<-list()
+for (i in 1:number_texts) {
+Nodes_df_list[[i]]<- data.frame(dict_new,node_reference,Text_freq[[i]],Text_freq_rel[[i]])
+Nodes_df_list[[i]]<-`names<-`(Nodes_df_list[[i]], c('Label','ID','Absolute Occurence', 'Relative Occurrence'))
+}
+for (i in 1:number_texts) {
+write.table(Nodes_df_list[[i]], file = paste('nodes_Text',i,'.csv',sep = ''),row.names = FALSE)
+}
+```
+
+At this point, the files containing the edges table and the nodes table for every concept of interest in all of the texts are on the computer in a format (.csv) that Gephi can understand.
+To upload them in Gephi, then, the files can simply be opened with the software and the importing options of Gephi will display automatically.
+
+16) To import the graph in R in order to analyse it in the same environment used until now, the codes below can be used. The codes use the R library i-graph for creating igraph objects (as many as the texts analysed). These objects represent in R the semantic networks that we created above. In order to create igraph objects, the various data frames representing our edge tables above have to be changed in vectors in which the adjacent values are taken by igraph as couples (similar to python dictionaries) being the source and the target of the relation. After having done this, the graphs can be created and the weight of the edges can be set separately.
+
+```{r}
+# Create the edge vectors substituting the edge data frames for igraph
+edges_vectors<-list()
+for (i in 1:number_texts) {
+edges_vectors[[i]]<-vector()
+for (j in 1:nrow(edges_df_list[[i]])) {
+  edges_vectors[[i]]<-append(edges_vectors[[i]],as.integer(edges_df_list[[i]][j,2:3]))
+ }
+}
+
+# Create the igraphs and set the weight of the edges
+graph_list<-list()
+for (i in 1:number_texts) {
+ graph_list[[i]]<-graph(edges_vectors[[i]],directed = FALSE) 
+  for (j in 1:nrow(edges_df_list[[i]])) {
+      graph_list[[i]]<-set.edge.attribute(graph_list[[i]],'weight',
+                                index = j,value = edges_df_list[[i]][j,"Weight"])
+ }
+}  
+```
+
+17) Also the vertexes (nodes) attributes can be set, in order to display the name of the single concepts/words and to take into account the weight of the single nodes (i.e. they're occurrence in the text/s). Eventually, also the color can be changed for highlighting different features or simply to distinguish one network from the other.
+
+```{r}
+# Giving names (i.e. our dictionaries) to the vertexes of the igraphs 
+for (i in 1:number_texts) {
+ for (j in 1:length(dict_new)) {
+  graph_list[[i]]<-set.vertex.attribute(graph_list[[i]],'name',
+                                      index = j,value = dict_new[j])
+ }
+}
+
+# Example of how to assign a different color to the vertexes. In this case the colors are used to distinguish different texts, i.e. different graphs
+Vcolors<-c("red","green","blue","yellow","purple","pink","black","white","grey","violet")
+# Add as many colors as needed
+for (i in 1:length(graph_list)) {
+  V(graph_list[[i]])$color<-Vcolors[i]
+}
+
+#Giving names to the igraphs
+for (i in 1:length(graph_list)) {
+  graph_list[[i]]$name<-paste("Text",i,sep = "")
+}
+# FINISH WITH DIMENSIONS OF NODES
+for (i in 1:number_texts) {
+ for (j in 1:number_dictionaries) {
+      graph_list[[i]]<-set.vertex.attribute(graph_list[[i]],'Occurrence',
+                                index = j,value = Nodes_df_list[[i]][j,3])
+ }
+}
+```
+
+18) At this point the igraphs should be created and ready to be further analysed in R. In order to plot the different graphs, use the following codes, remembering to change the index value according to the semantic network that has to be displayed.The number 1 in the index, in fact, will show the semantic network of the dictionaries in the first text provided, the number 2 of the second text and so on
+
+```{r}
+# Plotting the graphs
+plot(graph_list[[1]], vertex.size=V(graph_list[[1]])$Occurrence/100,edge.width=E(graph_list[[1]])$weight/10) # Change the index number to see the other graphs
+title(graph_list[[1]]$name) # Change the index number to see to which text the graph refers to
+```
+
