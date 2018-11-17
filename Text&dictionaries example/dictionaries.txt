@@ -1,0 +1,14 @@
+love, Love, dear, Dear, affection, Affection, care, Care, belove, Belove
+male, Male, he, He, him, Him, his, His
+female, Female, she, She, her, Her
+pleasure, Pleasure, sex, Sex, lust, Lust, penetration, Penetration
+sense, Sense, view, View, sight, Sight, flesh, Flesh, smell, Smell, taste, Taste
+animal, Animal, elephant, Elephant, rabbit, Rabbit, horse, Horse, tortoise, Tortoise, cock, Cock
+feed, Feed, eat, Eat, drink, Drink, ate, Ate, nurture, Nurture
+kama, Kama,desire, Desire
+nirvana,Nirvana,liberation, Liberation
+dharma, Dharma, duty, Duty,duti,Duti
+artha, Artha, aim, Aim, goal, Goal, profit, Profit
+
+
+"C:\Program Files\R\R-3.5.0\bin\R.exe" -e "shiny::runApp('C:/Users/Iacopo/Documents/SemanticApp/app.R')"
