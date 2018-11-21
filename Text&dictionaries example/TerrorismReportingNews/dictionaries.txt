@@ -1,0 +1,3 @@
+dictionary 1: terrorism, Terrorism, terrorist, Terrorist
+dictionary 2: islam, Islam, Muslim, muslim, islamic, Islamic, islamist, Islamist
+dictionary 3: terror, Terror, fear, Fear, panic, Panic

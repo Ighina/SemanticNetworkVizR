@@ -1,0 +1,3 @@
+dictionary 1: brexit,#Brexit,#brexit
+dictionary 2: peoplesvote,#PeoplesVote,#peoplesvote
+dictionary 3: TheresaMay,#TheresaMay,#theresamay
