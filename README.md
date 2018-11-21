@@ -16,6 +16,6 @@ From R/Rstudio: shiny::runGitHub('Ighina/SemanticNetworkVizR','Ighina')
 From Windows Command Prompt: "the location of R on your computer\R.exe" -e "shiny::runGitHub('Ighina/SemanticNetworkVizR','Ighina')
 *NB: the Command Prompt will give a message saying "Listening on:" followed by an https address, copy the https address on your browser to open the web app.
 
-The repository includes also a "Text&dictionary example" folder containing three erotic books (in .txt format) across different countries and times on which to perform the codes. The "dictionaries" file contains an example of possible dictionaries to be used as the concepts to be investigated in the books.
+The repository includes also a "Text&dictionary example" folder containing examples of how the app can be used. 
 
 *NB at the moment, for a better performance, is preferable to include every word in the dictionary twice, one with first letter capitalised and one without.
