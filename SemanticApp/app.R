@@ -38,7 +38,11 @@ ui_prova<-fluidPage(
     column(12,img(src="FOCA-1-300x192.jpg"),align="center"),
     column(12, selectInput("layout","Layouts:",c(layout.mds="layout.mds",layout.graphopt="layout.graphopt",layout.gem="layout.gem",
                                                 layout.circle="layout.circle"))),
-    column(12,selectInput("color","Network color:",c(Red="red",Blue="blue",Green="green",Yellow="yellow", Black="black"))))))
+    column(12,selectInput("color","Network color:",c(Red="red",Blue="blue",Green="green",Yellow="yellow", Black="black"))),
+              column(12, selectInput("language","Language:",c(english="english", 
+                                                    italian="italian",
+                                                    spanish="spanish",
+                                                    german="german"))))))
     
     server_prova<-function(input,output,session){
       output$graphnet <- renderPlot({
