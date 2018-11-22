@@ -292,7 +292,7 @@ ui_prova<-fluidPage(
         }
         print(V(graphnet)$Occurrence)
         
-        if(length(V(graphnet)$Occurrence)==0){
+        if(length(na.omit(V(graphnet)$Occurrence))==0){
           plot.igraph(graphnet, 
                       edge.width=E(graphnet)$Weight*40)
           title('Words Frequency is Missing!')
