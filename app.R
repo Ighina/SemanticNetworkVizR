@@ -299,6 +299,11 @@ ui_prova<-fluidPage(
         }
         else{
         print(E(graphnet)$Weight)
+          for (i in 1:length(V(graphnet)$Occurrence)) {
+            if(is.na(V(graphnet)$Occurrence[i])==TRUE){
+              V(graphnet)$Occurrence[i]<-1
+            }
+          }
         if(input$layout=="layout.mds"){
         plot.igraph(graphnet, vertex.size=V(graphnet)$Occurrence/40, 
                     edge.width=E(graphnet)$Weight*40,layout=layout.mds)}
