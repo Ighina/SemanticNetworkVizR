@@ -269,6 +269,12 @@ ui_prova<-fluidPage(
         for (j in 1:nrow(edge_df)) {
           edges_vector<-append(edges_vector,as.integer(edge_df[j,2:3]))
         }
+          
+          print(edges_vector)
+        if(length(na.omit(edges_vector))==0){
+          title('No Co-Occurrences Found!')
+        }
+        else{
         graphnet<-graph(edges_vector,directed = FALSE) 
         for (j in 1:nrow(edge_df)) {
           graphnet<-set.edge.attribute(graphnet,'Weight',
@@ -286,8 +292,20 @@ ui_prova<-fluidPage(
           graphnet<-set.vertex.attribute(graphnet,'Occurrence',
                                          index = j,value = nodes_df[j,3])
         }
+       print(V(graphnet)$Occurrence)
         
+        if(length(na.omit(V(graphnet)$Occurrence))==0){
+          plot.igraph(graphnet, 
+                      edge.width=E(graphnet)$Weight*40)
+          title('Words Frequency is Missing!')
+        }
+        else{
         print(E(graphnet)$Weight)
+          for (i in 1:length(V(graphnet)$Occurrence)) {
+            if(is.na(V(graphnet)$Occurrence[i])==TRUE){
+              V(graphnet)$Occurrence[i]<-1
+            }
+          }
         if(input$layout=="layout.mds"){
         plot.igraph(graphnet, vertex.size=V(graphnet)$Occurrence/40, 
                     edge.width=E(graphnet)$Weight*40,layout=layout.mds)}
@@ -299,7 +317,7 @@ ui_prova<-fluidPage(
                       edge.width=E(graphnet)$Weight*40,layout=layout.gem)}
         if(input$layout=="layout.circle"){
           plot.igraph(graphnet, vertex.size=V(graphnet)$Occurrence/40, 
-                      edge.width=E(graphnet)$Weight*40,layout=layout.circle)}}}}}
+                      edge.width=E(graphnet)$Weight*40,layout=layout.circle)}}}}}}}
       })
     }
 
