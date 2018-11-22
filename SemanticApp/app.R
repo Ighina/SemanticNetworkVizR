@@ -3,7 +3,7 @@ library(shinythemes)
 
 ui_prova<-fluidPage(
   theme = shinytheme("superhero"),
-  title = "Notebook",
+  title = "SemanticApp",
   titlePanel(h1("Semantic Network of Concepts' Co-occurences per sentence with R",h6("by",em("Iacopo Ghinassi")))),
   
   sidebarLayout(
@@ -169,7 +169,18 @@ ui_prova<-fluidPage(
         Corpusv <- tm_map(Corpusv, content_transformer(tolower))
         Corpusv <- tm_map(Corpusv, removePunctuation)
         Corpusv <- tm_map(Corpusv, removeNumbers)
+        if (input$language=="english") {
         Corpusv <- tm_map(Corpusv, removeWords, stopwords("english"))#select the language of the texts
+        }
+        if (input$language=="italian") {
+          Corpusv <- tm_map(Corpusv, removeWords, stopwords("it"))#select the language of the texts
+        }
+        if (input$language=="spanish") {
+          Corpusv <- tm_map(Corpusv, removeWords, stopwords("sp"))#select the language of the texts
+        }
+        if (input$language=="german") {
+          Corpusv <- tm_map(Corpusv, removeWords, stopwords("ger"))#select the language of the texts
+        }
         Corpusv <- tm_map(Corpusv, stripWhitespace)
         TDM<-TermDocumentMatrix(Corpusv)
         dict_new<-vector()
