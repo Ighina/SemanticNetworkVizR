@@ -387,3 +387,55 @@ plot(graph_list[[1]], vertex.size=V(graph_list[[1]])$Occurrence/100,edge.width=E
 title(graph_list[[1]]$name) # Change the index number to see to which text the graph refers to
 ```
 
+19) From the datasets obtained before it is also possible to have a closer look at the frequency of the various concepts in the texts. We can do so by creating a data frame, 'newer_df', containing the absolute occurrences of the various concepts in the texts (and one,'newer_relative_df', containing the relative ones). The data frame contains group the values accordingly to two factorised vectors: one related to which text the value pertains and one to which particular dictionary. Thanks to these factors, the data frame can be plot through ggplot2 using the codes below.
+
+```{r}
+# Create a new data frame containing all the absolute occurrence values of the dictionaries in the various texts, plus a series of factors 'text 1', 'text 2', etc. accordingly to how many texts are being analysed and that allow to group the values by the text they refer to. Similarly, also the dictionaries analysed are included as many times as the texts, in order to further grouping the occurrence values.
+
+Occurrences<-vector()
+texts<-vector()
+dictionaries<-vector()
+
+for (i in 1:number_texts) {
+ texts<-append(texts,replicate(number_dictionaries,paste('text',i)))
+ dictionaries<-append(dictionaries,dict_new)
+ Occurrences<- append(Occurrences,Nodes_df_list[[i]]$`Absolute Occurence`)
+}
+
+newer_df<-data.frame(as.factor(texts),
+                     as.factor(dictionaries),Occurrences)
+
+# Same of before but with relative occurrences
+Rel_occurrences<-vector()
+for (i in 1:number_texts) {
+  Rel_occurrences<-append(Rel_occurrences,Nodes_df_list[[i]]$`Relative Occurrence`)
+}
+
+newer_rel_df<-data.frame(as.factor(texts),
+                     as.factor(dictionaries),Rel_occurrences)
+
+#Create Plots with ggplot2
+#Absolute Occurrences
+Abs_plot<-ggplot(data = newer_df,aes
+       (x=newer_df$as.factor.texts.,y=newer_df$Occurrences,
+         fill= newer_df$as.factor.dictionaries.))+geom_col()+
+            theme_classic()+xlab('Texts')+
+              ylab('Absolute Frequency')+labs(fill='Dictionaries')
+#Relative Occurrences
+Rel_plot<-ggplot(data = newer_rel_df,aes
+       (x=newer_rel_df$as.factor.texts.,y=newer_rel_df$Rel_occurrences,
+         fill= newer_rel_df$as.factor.dictionaries.))+geom_col()+
+            theme_classic()+xlab('Texts')+
+              ylab('Relative Frequency')+labs(fill='Dictionaries')
+
+```
+
+```{r}
+#Absolute Occurrences plot:
+Abs_plot
+```
+
+```{r}
+#Relative Occurrences plot:
+Rel_plot
+```
