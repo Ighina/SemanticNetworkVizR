@@ -256,12 +256,17 @@ ui_prova<-fluidPage(
                         "no correlation was found between the dictionaries"))
         }
         else{
-        termFreq2<-function(x){
-          termFreq(x, 
-                   control = list(content_transformer(tolower),
-                                  removePunctuation,removeNumbers,
-                                  removeWords, stopwords("en"),stripWhitespace))# Change the                                                           language of stopwords if needed
-        }
+      strsplit_space_tokenizer <- function(x)
+    unlist(strsplit(as.character(x), "[[:space:]]+"))
+termFreq2<-function(x){
+  termFreq(x, 
+           control = list(
+             tokenize = strsplit_space_tokenizer,
+             language="en", # Change the language if needed
+             removePunctuation = TRUE,
+             removeNumbers =TRUE,
+             stopwords=TRUE))
+}
         
         processed_text<-iconv(processed_text, "UTF-8",'latin1', sub = "") #change the parameters of conversion as needed, esepcially if errors are thrown at this stage
         Text_freq<-termFreq2(processed_text)
