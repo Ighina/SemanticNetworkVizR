@@ -257,16 +257,39 @@ ui_prova<-fluidPage(
         }
         else{
       strsplit_space_tokenizer <- function(x)
-    unlist(strsplit(as.character(x), "[[:space:]]+"))
-termFreq2<-function(x){
-  termFreq(x, 
-           control = list(
-             tokenize = strsplit_space_tokenizer,
-             language="en", # Change the language if needed
-             removePunctuation = TRUE,
-             removeNumbers =TRUE,
-             stopwords=TRUE))
-}
+          unlist(strsplit(as.character(x), "[[:space:]]+"))
+        if(input$language=='english'){
+          ctrl<- list(
+            tokenize = strsplit_space_tokenizer,
+            language="en", # Change the language if needed
+            removePunctuation = TRUE,
+            removeNumbers =TRUE,
+            stopwords=TRUE)}
+        if(input$language=='spanish'){
+          ctrl<- list(
+            tokenize = strsplit_space_tokenizer,
+            language="spanish", # Change the language if needed
+            removePunctuation = TRUE,
+            removeNumbers =TRUE,
+            stopwords=TRUE)}
+        if(input$language=='german'){
+          ctrl<- list(
+            tokenize = strsplit_space_tokenizer,
+            language="german", # Change the language if needed
+            removePunctuation = TRUE,
+            removeNumbers =TRUE,
+            stopwords=TRUE)}
+        if(input$language=='italian'){
+          ctrl<- list(
+            tokenize = strsplit_space_tokenizer,
+            language="italian", # Change the language if needed
+            removePunctuation = TRUE,
+            removeNumbers =TRUE,
+            stopwords=TRUE)}
+        termFreq2<-function(x){
+          termFreq(x, 
+                   control = ctrl)
+        }
         
         processed_text<-iconv(processed_text, "UTF-8",'latin1', sub = "") #change the parameters of conversion as needed, esepcially if errors are thrown at this stage
         Text_freq<-termFreq2(processed_text)
